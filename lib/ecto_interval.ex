@@ -13,24 +13,33 @@ if Code.ensure_loaded?(Postgrex) do
     def type, do: Postgrex.Interval
 
     @impl true
+    def cast(%{"months" => months, "days" => days, "secs" => secs, "microsecs" => microsecs}) do
+      do_cast(months, days, secs, microsecs)
+    end
+
     def cast(%{"months" => months, "days" => days, "secs" => secs}) do
-      do_cast(months, days, secs)
+      do_cast(months, days, secs, 0)
+    end
+
+    def cast(%{months: months, days: days, secs: secs, microsecs: microsecs}) do
+      do_cast(months, days, secs, microsecs)
     end
 
     def cast(%{months: months, days: days, secs: secs}) do
-      do_cast(months, days, secs)
+      do_cast(months, days, secs, 0)
     end
 
-    def cast(_) do
+    def cast(other) do
       :error
     end
 
-    defp do_cast(months, days, secs) do
+    defp do_cast(months, days, secs, microsecs) do
       try do
         months = to_integer(months)
         days = to_integer(days)
         secs = to_integer(secs)
-        {:ok, %{months: months, days: days, secs: secs}}
+        microsecs = to_integer(microsecs)
+        {:ok, %{months: months, days: days, secs: secs, microsecs: microsecs}}
       rescue
         _ -> :error
       end
@@ -45,24 +54,42 @@ if Code.ensure_loaded?(Postgrex) do
     end
 
     @impl true
-    def load(%{months: months, days: days, secs: secs}) do
-      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs}}
+    def load(%{months: months, days: days, secs: secs, microsecs: microsecs}) do
+      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs, microsecs: microsecs}}
     end
 
+    def load(%{months: months, days: days, secs: secs}) do
+      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs, microsecs: 0}}
+    end
+
+
     @impl true
+    def dump(%{months: months, days: days, secs: secs, microsecs: microsecs}) do
+      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs, microsecs: microsecs}}
+    end
+
+    def dump(%{"months" => months, "days" => days, "secs" => secs, "microsecs" => microsecs}) do
+      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs, microsecs: microsecs}}
+    end
+
     def dump(%{months: months, days: days, secs: secs}) do
-      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs}}
+      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs, microsecs: 0}}
     end
 
     def dump(%{"months" => months, "days" => days, "secs" => secs}) do
-      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs}}
+      {:ok, %Postgrex.Interval{months: months, days: days, secs: secs, microsecs: 0}}
     end
   end
 
   defimpl String.Chars, for: [Postgrex.Interval] do
     import Kernel, except: [to_string: 1]
 
-    def to_string(%{:months => months, :days => days, :secs => secs}) do
+    def to_string(%{:months => months, :days => days, :secs => secs, :microsecs => microsecs}) do
+      secs_with_micro = case microsecs do
+        0 -> secs
+        _ -> secs + (microsecs / 1_000_000.0)
+      end
+
       m =
         if months === 0 do
           ""
@@ -78,16 +105,16 @@ if Code.ensure_loaded?(Postgrex) do
         end
 
       s =
-        if secs === 0 do
+        if secs_with_micro === 0 do
           ""
         else
-          " #{secs} seconds"
+          " #{secs_with_micro} seconds"
         end
 
-      if months === 0 and days === 0 and secs === 0 do
+      if months === 0 and days === 0 and secs_with_micro === 0 do
         "<None>"
       else
-        "Every#{m}#{d}#{s}"
+        "Interval#{m}#{d}#{s}"
       end
     end
   end

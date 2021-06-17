@@ -42,7 +42,7 @@ defmodule EctoIntervalTest do
     {:ok, some} = EctoInterval.load(%{months: 1, days: 2, secs: 3})
     {:ok, usual} = EctoInterval.load(%{months: 24, days: 0, secs: 0})
     assert "<None>" = to_string(none)
-    assert "Every 1 months 2 days 3 seconds" = to_string(some)
-    assert "Every 24 months" = to_string(usual)
+    assert "Interval 1 months 2 days 3 seconds" = to_string(some)
+    assert "Interval 24 months" = to_string(usual)
   end
 end
