@@ -29,7 +29,7 @@ if Code.ensure_loaded?(Postgrex) do
       do_cast(months, days, secs, 0)
     end
 
-    def cast(other) do
+    def cast(_other) do
       :error
     end
 
